@@ -14,6 +14,7 @@ import os
 import logging
 from pathlib import Path
 import xarray as xr
+import numpy as np
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -44,8 +45,8 @@ def get_zarr_year_range(zarr_store_path):
         ds = xr.open_zarr(zarr_store_path)
         years = ds['calendar_year'].values # numpy.ndarray of years
         if years.size > 0:
-            start_year = int(years.min())
-            end_year = int(years.max())
+            start_year = int(np.nanmin(years))
+            end_year = int(np.nanmax(years))
             return [start_year, end_year]
         else:
             return f"No time data available in {zarr_store_path}"
