@@ -61,15 +61,17 @@ def get_zarr_year_range(zarr_store_path):
 
 ds_info_list = []
 
+metadata_file = data_dir / 'metadata.txt'
+metadataf = open(metadata_file, 'w')
+
 for model_dir in data_dir.iterdir():
     if model_dir.is_dir() and model_dir.name.endswith('.zarr'):
-        logging.info(f'Reading Zarr store: {model_dir}')
+        logging.debug(f'Reading Zarr store: {model_dir}')
         try:
             ds = xr.open_zarr(model_dir)
             logging.info(f'Successfully read Zarr store: {model_dir}')
             # Perform any additional processing on the dataset here
             description = ds.attrs.get('DESCRIPTION', 'No description available')
-            logging.info(f'Dataset years: {get_zarr_year_range(model_dir)}')
             ds_info_list.append({
                 'model_dir': str(model_dir),
                 'zarr_store': str(model_dir.name),
@@ -77,9 +79,15 @@ for model_dir in data_dir.iterdir():
                 'group_index': group_index,
                 'description': description
             })
-            # outfile.write("<:>".join([str(model_dir), data_format, group_index, description]) + "<:>\n")
+            metadataf.write(f"{model_dir.name}:\n")
+            metadataf.write(f"Temporal range: {get_zarr_year_range(model_dir)}\n")
         except Exception as e:
             logging.error(f'Error reading Zarr store {model_dir}: {e}')
+
+metadataf.write("Min/max temporal range across all Zarr stores:\n")
+all_ranges = [get_zarr_year_range(model_dir) for model_dir in data_dir.iterdir() if model_dir.is_dir() and model_dir.name.endswith('.zarr')]
+metadataf.write(f"{min(all_ranges)} - {max(all_ranges)}\n")
+metadataf.close()
 
 # The zarr store ('zarr_store') naming structure is:
 # `bcd_me_[type]_[ESM].zarr`
