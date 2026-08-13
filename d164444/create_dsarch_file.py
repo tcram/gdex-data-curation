@@ -61,7 +61,8 @@ def get_zarr_year_range(zarr_store_path):
 
 ds_info_list = []
 
-metadata_file = data_dir / 'metadata.txt'
+output_dir.mkdir(parents=True, exist_ok=True)
+metadata_file = output_dir / 'metadata.txt'
 metadataf = open(metadata_file, 'w')
 
 for model_dir in data_dir.iterdir():
