@@ -1,8 +1,16 @@
 #!/usr/bin/env python3
+"""
+This script reads Zarr stores from a specified directory, extracts relevant information, 
+and writes it to a dsarch input file. The dsarch input file is then used to archive the
+Zarr files with the command 'dsarch <dnnnnnn> -if <dsarch_input_file>'.
+Usage:
+    python create_dsarch_file.py
+
+Ensure that the required dependencies are installed:
+    pip install xarray zarr
+"""
+
 import os
-import sys
-import json
-import argparse
 import logging
 from pathlib import Path
 import xarray as xr
@@ -12,7 +20,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 dsid = 'd164444'
 
-# Parent directory of model ensemble data
+# Parent directory of model ensemble data and the working directory for dsarch output
 data_dir = Path('/glade/campaign/cgd/cas/schwarzwald/bcd_me')
 work_dir = os.path.join(os.environ.get('GDEXWORK', '/lustre/desc1/gdex/work'), 'tcram')
 output_dir = Path(work_dir) / dsid / 'dsarch'
@@ -27,6 +35,24 @@ dsarch_headers = {
     'DE': 'Description'
 }
 
+def get_zarr_year_range(zarr_store_path):
+    """
+    Extract the temporal range from the Zarr store's attributes.
+    Returns a list [start_year, end_year] if available, otherwise an appropriate message.
+    """
+    try:
+        ds = xr.open_zarr(zarr_store_path)
+        years = ds['calendar_year'].values # numpy.ndarray of years
+        if years.size > 0:
+            start_year = int(years.min())
+            end_year = int(years.max())
+            return [start_year, end_year]
+        else:
+            return f"No time data available in {zarr_store_path}"
+    except Exception as e:
+        logging.error(f"Error extracting temporal range from {zarr_store_path}: {e}")
+        return "Error extracting temporal range"
+    
 # Iterate through each model directory and read each Zarr store
 # Store the model directory name, data format, group index, and description in a dictionary,
 # then write the dictionary to the dsarch file as a line of text with the format:
@@ -42,7 +68,7 @@ for model_dir in data_dir.iterdir():
             logging.info(f'Successfully read Zarr store: {model_dir}')
             # Perform any additional processing on the dataset here
             description = ds.attrs.get('DESCRIPTION', 'No description available')
-            logging.info(f'Dataset description: {description}')
+            logging.info(f'Dataset years: {get_zarr_year_range(model_dir)}')
             ds_info_list.append({
                 'model_dir': str(model_dir),
                 'zarr_store': str(model_dir.name),
